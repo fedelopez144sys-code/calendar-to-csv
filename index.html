@@ -129,6 +129,7 @@
   .btn.ghost:hover{background:var(--paper-2)}
   .btn:disabled{opacity:.42;cursor:not-allowed;transform:none}
   .btn.big{font-size:16px;padding:17px 30px;border-radius:12px}
+  .btn.sm{font-size:12px;padding:9px 14px;border-radius:8px}
 
   /* ---------- google panel ---------- */
   .field{margin-bottom:16px}
@@ -154,6 +155,18 @@
     margin-top:14px;min-height:18px;display:flex;gap:9px;align-items:center}
   .spin{width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--accent);
     border-radius:50%;animation:spin .7s linear infinite}
+
+  /* ---------- year filter bar ---------- */
+  .year-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px}
+  .ybtn{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;
+    border:1px solid var(--line-strong);background:var(--paper);color:var(--ink-soft);
+    padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .15s;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .ybtn:hover{border-color:var(--ink);color:var(--ink)}
+  .ybtn.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  .ybtn .cnt{font-size:10px;opacity:.55}
 
   /* ---------- results ---------- */
   #results{display:none}
@@ -203,10 +216,36 @@
   tbody td.idx{color:var(--muted);text-align:right;background:var(--paper)}
   .previewnote{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);margin-top:10px;text-align:right}
 
+  /* ---------- event editor ---------- */
+  .editor-wrap{border:1px solid var(--line);border-radius:14px;overflow:auto;background:var(--card);max-height:500px}
+  .editor-table{border-collapse:collapse;font-family:"IBM Plex Mono",monospace;font-size:12px;min-width:100%}
+  .editor-table thead th{
+    position:sticky;top:0;background:var(--ink);color:var(--paper);text-align:left;
+    padding:9px 11px;font-weight:500;letter-spacing:.04em;white-space:nowrap;z-index:2
+  }
+  .editor-table thead th.custom-hd{background:var(--accent)}
+  .editor-table tbody td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+  .editor-table tbody td.ro{color:var(--ink-soft);max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  .editor-table tbody td.desc-cell{max-width:280px}
+  .editor-table tbody td.idx{color:var(--muted);text-align:right;background:var(--paper-2)}
+  .editor-table tbody tr:hover td.ro{color:var(--ink)}
+  .cell-in{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink);
+    background:var(--paper);border:1px solid var(--line);border-radius:6px;
+    padding:5px 8px;width:100%;min-width:110px;max-width:160px;
+    transition:border-color .15s
+  }
+  .cell-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(214,69,42,0.14)}
+
+  /* ---------- export bar ---------- */
   .export-bar{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;
     margin-top:26px;padding-top:22px;border-top:2px solid var(--ink)}
   .export-bar .meta{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-soft)}
   .export-bar .meta b{color:var(--accent)}
+  .year-export-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;
+    padding-top:12px;border-top:1px dashed var(--line)}
+  .year-export-row .lbl{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted)}
 
   footer{margin-top:54px;border-top:1px solid var(--line);padding-top:18px;
     font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted);
@@ -301,7 +340,7 @@
           <li>En <b>Orígenes autorizados de JavaScript</b> agregá exactamente: <code id="originHint">http://localhost:8000</code></li>
           <li>Copiá el <b>Client ID</b> que termina en <code>.apps.googleusercontent.com</code> y pegalo arriba.</li>
         </ol>
-        <div class="note">La conexión en vivo necesita que abras esta página servida en <code>http://localhost</code> (ver instrucciones abajo o en el README). El método de archivo <b>.ics</b> funciona sin nada de esto.</div>
+        <div class="note">La conexión en vivo necesita que abras esta página servida en <code>http://localhost</code> (ver instrucciones abajo o en el README). El método de archivo <b>.ics</b> funciona igual, pero la conexión OAuth necesita servir la página en <code>http://localhost:8000</code>. Mirá el README para el comando.</div>
       </details>
     </div>
   </div>
@@ -311,7 +350,13 @@
     <div class="marker"><span class="n">02</span> Datos cargados</div>
     <div class="stats" id="stats"></div>
 
-    <div class="marker"><span class="n">03</span> Columnas a exportar</div>
+    <!-- filtro por año -->
+    <div id="year-tabs-host" style="margin-top:20px"></div>
+
+    <div class="marker"><span class="n">03</span> Editar datos de cada evento</div>
+    <div id="editor-table-host" style="margin-bottom:6px"></div>
+
+    <div class="marker"><span class="n">04</span> Columnas a exportar</div>
     <div class="toolbar">
       <span class="lbl">Seleccionar:</span>
       <button class="minibtn" data-sel="all">Todas</button>
@@ -333,17 +378,19 @@
       <label class="switch"><input type="checkbox" id="bom" checked /> BOM UTF-8 (Excel)</label>
     </div>
 
-    <div class="marker"><span class="n">04</span> Vista previa</div>
+    <div class="marker"><span class="n">05</span> Vista previa</div>
     <div class="tablewrap"><table id="preview"></table></div>
     <div class="previewnote" id="previewNote"></div>
 
     <div class="export-bar">
       <div class="meta" id="exportMeta"></div>
-      <div style="display:flex;gap:10px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button class="btn ghost" id="resetBtn">Cargar otros datos</button>
         <button class="btn accent big" id="exportBtn">↓ Descargar CSV</button>
       </div>
     </div>
+    <!-- botones por año -->
+    <div id="year-export-host"></div>
   </div>
 
   <footer>
@@ -358,24 +405,144 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* ============================================================
-   Modelo de datos unificado
+   Modelo de datos
    ============================================================ */
-const CANONICAL = ['calendar','title','start','end','all_day','timezone','location','description','status','visibility','transparency','organizer','attendees','recurrence','categories','created','updated','uid','html_link','color','source'];
+const CUSTOM_FIELDS = [
+  'nombre_cumpleanera','nombre_mama','fecha','hora_inicio','hora_fin',
+  'edad','cantidad_chicos','direccion','servicio','monto_total','adelanto','saldo'
+];
+const CUSTOM_LABELS = {
+  nombre_cumpleanera:'Nombre cumpleanera', nombre_mama:'Nombre mamá',
+  fecha:'Fecha', hora_inicio:'Hora inicio', hora_fin:'Hora fin',
+  edad:'Edad', cantidad_chicos:'Cant. chicos', direccion:'Dirección',
+  servicio:'Servicio', monto_total:'Monto total', adelanto:'Adelanto', saldo:'Saldo'
+};
+const CANONICAL = [
+  'calendar','title','start','end','all_day','timezone','location','description',
+  'status','visibility','transparency','organizer','attendees','recurrence',
+  'categories','created','updated','uid','html_link','color','source',
+  ...CUSTOM_FIELDS
+];
 const CORE = ['calendar','title','start','end','all_day','timezone','location','description'];
 const LABELS = {
   calendar:'Calendario', title:'Título', start:'Inicio', end:'Fin', all_day:'Todo el día',
   timezone:'Zona horaria', location:'Ubicación', description:'Descripción', status:'Estado',
   visibility:'Visibilidad', transparency:'Disponibilidad', organizer:'Organizador',
   attendees:'Invitados', recurrence:'Recurrencia', categories:'Categorías', created:'Creado',
-  updated:'Modificado', uid:'UID', html_link:'Enlace', color:'Color', source:'Fuente'
+  updated:'Modificado', uid:'UID', html_link:'Enlace', color:'Color', source:'Fuente',
+  ...CUSTOM_LABELS
 };
 
 let events = [];
 let presentFields = [];
 let selected = new Set();
+let activeYear = 'all';
 
 /* ============================================================
-   Parser ICS (RFC 5545, casos comunes)
+   Auto-completado desde título y descripción
+   ============================================================ */
+const STOP_WORDS = new Set([
+  'cumple','cumpleaños','fiesta','evento','de','del','la','el','los','las',
+  'y','e','para','con','en','a','por','un','una','años','año','feliz',
+  'happy','birthday','party','mini','super','gran','gran'
+]);
+const SERVICE_KWS = [
+  'show','payaso','mago','magia','princesa','hadas','hada','superheroe','superhéroe',
+  'animacion','animación','animadora','baile','música','musica','dj','catering',
+  'decoracion','decoración','fotografia','fotografía','video','globos','torta',
+  'candy','juegos','pintacaras','cotillon','cotillón','inflable','banda','teatro',
+  'disney','frozen','peppa','spiderman','barbie','circo','acrobacia','maromero',
+  'malabarista','zancos','burbujas','espuma','foam','laser','karaoke','photobooth'
+];
+
+function parseMoney(raw) {
+  // Formato AR: 1.500,50 → 1500.50 / 1.500 → 1500 / 1500 → 1500
+  return parseFloat(raw.replace(/\./g, '').replace(',', '.')) || 0;
+}
+function extractEdad(text) {
+  // Captura el número antes de: años, año, añitos, añito, anios, anos, anio, ano
+  const m = text.match(/(\d+)\s*a[nñ][oói]/i);
+  return m ? m[1] : '';
+}
+
+function numFromMoney(s) {
+  return parseMoney((s || '').replace(/^\$\s*/, ''));
+}
+function calcSaldo(ev) {
+  const total = numFromMoney(ev.monto_total);
+  const adel  = numFromMoney(ev.adelanto);
+  ev.saldo = total > 0 ? '$' + (total - adel) : '';
+}
+
+function properNamesFrom(text, ignoreServices) {
+  const names = [];
+  const parts = text.split(/\s*[-\/|,]\s*/).map(s => s.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (ignoreServices && SERVICE_KWS.some(kw => part.toLowerCase().includes(kw))) continue;
+    for (const w of part.split(/[\s\n\r\t()\[\];:]+/)) {
+      const clean = w.replace(/[^A-Za-záéíóúñüÁÉÍÓÚÑÜ]/g, '');
+      if (clean.length > 1 && /^[A-ZÁÉÍÓÚÑÜ]/.test(clean) && !STOP_WORDS.has(clean.toLowerCase()))
+        names.push(clean);
+    }
+  }
+  return names;
+}
+
+function autoFillEvent(ev) {
+  const title = ev.title || '';
+  const desc  = ev.description || '';
+
+  // fecha, hora_inicio, hora_fin desde start/end
+  if (!ev.fecha && ev.start) {
+    ev.fecha = ev.start.slice(0, 10);
+  }
+  if (!ev.hora_inicio && ev.start && ev.start.includes('T')) {
+    ev.hora_inicio = ev.start.slice(11, 16);
+  }
+  if (!ev.hora_fin && ev.end && ev.end.includes('T')) {
+    ev.hora_fin = ev.end.slice(11, 16);
+  }
+
+  // monto_total = $ más grande en descripción · adelanto = $ más chico
+  if (!ev.monto_total || !ev.adelanto) {
+    const hits = [...desc.matchAll(/\$\s*([\d.,]+)/g)];
+    if (hits.length) {
+      const vals = hits.map(h => ({ raw: h[1], n: parseMoney(h[1]) }));
+      vals.sort((a, b) => a.n - b.n);
+      if (!ev.adelanto    && vals.length > 1) ev.adelanto    = '$' + vals[0].raw;
+      if (!ev.monto_total)                    ev.monto_total = '$' + vals[vals.length - 1].raw;
+    }
+  }
+
+  // nombre_mama = 1er nombre propio · nombre_cumpleanera = 2do nombre propio
+  // Se busca en título (sin servicios) y luego en descripción hasta tener ambos
+  if (!ev.nombre_mama || !ev.nombre_cumpleanera) {
+    const allNames = [
+      ...properNamesFrom(title, true),
+      ...properNamesFrom(desc,  true)
+    ];
+    if (!ev.nombre_mama        && allNames.length > 0) ev.nombre_mama        = allNames[0];
+    if (!ev.nombre_cumpleanera && allNames.length > 1) ev.nombre_cumpleanera = allNames[1];
+  }
+
+  // servicio desde el título
+  if (!ev.servicio) {
+    const parts = title.split(/\s*[-\/|,]\s*/).map(s => s.trim()).filter(Boolean);
+    const svc = parts.filter(p => SERVICE_KWS.some(kw => p.toLowerCase().includes(kw)));
+    if (svc.length) ev.servicio = svc.join(', ');
+  }
+
+  // edad = número antes de "años" (o variantes) en título o descripción
+  if (!ev.edad) {
+    ev.edad = extractEdad(title) || extractEdad(desc);
+  }
+
+  // saldo = monto_total - adelanto
+  calcSaldo(ev);
+}
+
+/* ============================================================
+   Parser ICS (RFC 5545)
    ============================================================ */
 function unfoldLines(text){
   const raw = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
@@ -442,7 +609,7 @@ function extractAttendee(p){
 }
 function buildEventFromICS(c, calName){
   const s = c._start || {}, e = c._end || {};
-  return {
+  const ev = {
     calendar: calName || '', title: c.title || '',
     start: s.iso || '', end: e.iso || '',
     all_day: s.allDay ? true : false, timezone: s.tz || '',
@@ -454,6 +621,8 @@ function buildEventFromICS(c, calName){
     created: c._created ? c._created.iso : '', updated: c._updated ? c._updated.iso : '',
     uid: c.uid || '', html_link: c.html_link || '', color: c.color || '', source:'ics'
   };
+  for(const k of CUSTOM_FIELDS) ev[k] = '';
+  return ev;
 }
 function parseICS(text, fallbackCal){
   const lines = unfoldLines(text);
@@ -498,7 +667,7 @@ function parseICS(text, fallbackCal){
 function normalizeFromAPI(ev, calName){
   const s = ev.start || {}, e = ev.end || {};
   const allDay = !!s.date;
-  return {
+  const obj = {
     calendar: calName || '', title: ev.summary || '',
     start: s.dateTime || s.date || '', end: e.dateTime || e.date || '',
     all_day: allDay, timezone: s.timeZone || '',
@@ -510,6 +679,8 @@ function normalizeFromAPI(ev, calName){
     created: ev.created || '', updated: ev.updated || '',
     uid: ev.iCalUID || ev.id || '', html_link: ev.htmlLink || '', color: ev.colorId || '', source:'google'
   };
+  for(const k of CUSTOM_FIELDS) obj[k] = '';
+  return obj;
 }
 let accessToken = null, tokenClient = null;
 function setGoogStatus(html, spin){
@@ -610,10 +781,56 @@ async function handleFiles(fileList){
 }
 
 /* ============================================================
+   Agrupación por año
+   ============================================================ */
+function getYears(){
+  const years = new Set(events.map(ev => (ev.start||'').slice(0,4)).filter(Boolean));
+  return [...years].sort();
+}
+function getActiveEvents(){
+  if(activeYear === 'all') return events;
+  return events.filter(ev => (ev.start||'').slice(0,4) === activeYear);
+}
+function countByYear(y){ return events.filter(ev => (ev.start||'').slice(0,4) === y).length; }
+
+function renderYearTabs(){
+  const years = getYears();
+  const host = document.getElementById('year-tabs-host');
+  if(!host || years.length < 2){ if(host) host.innerHTML=''; return; }
+  const buttons = years.map(y =>
+    `<button class="ybtn${activeYear===y?' on':''}" data-year="${y}">${y} <span class="cnt">${countByYear(y)}</span></button>`
+  ).join('');
+  host.innerHTML = `<div class="year-bar">
+    <button class="ybtn${activeYear==='all'?' on':''}" data-year="all">Todos <span class="cnt">${events.length}</span></button>
+    ${buttons}
+  </div>`;
+  host.querySelectorAll('.ybtn').forEach(b => {
+    b.onclick = () => { activeYear = b.dataset.year; renderYearTabs(); renderEditor(); renderPreview(); updateCounts(); };
+  });
+}
+
+function renderYearExportButtons(){
+  const years = getYears();
+  const host = document.getElementById('year-export-host');
+  if(!host || years.length < 2){ if(host) host.innerHTML=''; return; }
+  const btns = years.map(y =>
+    `<button class="btn ghost sm" data-year="${y}">↓ ${y} <span style="opacity:.55;font-size:10px">${countByYear(y)} ev.</span></button>`
+  ).join('');
+  host.innerHTML = `<div class="year-export-row">
+    <span class="lbl">Exportar por año:</span>
+    ${btns}
+  </div>`;
+  host.querySelectorAll('.btn[data-year]').forEach(b => {
+    b.onclick = () => downloadCSVForYear(b.dataset.year);
+  });
+}
+
+/* ============================================================
    Render de resultados
    ============================================================ */
 function computePresentFields(){
   const present = new Set(['calendar','title','start','end']);
+  CUSTOM_FIELDS.forEach(k => present.add(k));
   for(const ev of events){
     for(const k of CANONICAL){
       const v = ev[k];
@@ -623,14 +840,27 @@ function computePresentFields(){
   return CANONICAL.filter(k => present.has(k));
 }
 function afterLoad(){
+  // ordenar por fecha
+  events.sort((a, b) => (a.start||'').localeCompare(b.start||''));
+
+  // auto-completar campos desde título y descripción
+  for(const ev of events) autoFillEvent(ev);
+
+  activeYear = 'all';
   presentFields = computePresentFields();
   selected = new Set(CORE.filter(k => presentFields.includes(k)));
+  CUSTOM_FIELDS.forEach(k => selected.add(k));
+
   renderStats();
+  renderYearTabs();
+  renderEditor();
   renderFields();
   renderPreview();
+  renderYearExportButtons();
   document.getElementById('results').style.display = 'block';
   document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
 }
+
 function renderStats(){
   const cals = new Set(events.map(e => e.calendar || '—'));
   let min = '', max = '';
@@ -647,6 +877,51 @@ function renderStats(){
     <div class="stat"><div class="v sm">${d(min)}</div><div class="k">Desde</div></div>
     <div class="stat"><div class="v sm">${d(max)}</div><div class="k">Hasta</div></div>`;
 }
+
+function renderEditor(){
+  const host = document.getElementById('editor-table-host');
+  if(!host) return;
+  const active = getActiveEvents();
+  if(!active.length){ host.innerHTML = '<p class="previewnote" style="text-align:left">Sin eventos para el año seleccionado.</p>'; return; }
+
+  const customHds = CUSTOM_FIELDS.map(k => `<th class="custom-hd">${CUSTOM_LABELS[k]}</th>`).join('');
+  let rows = '';
+  for(const {ev, origIdx} of active.map(ev => ({ ev, origIdx: events.indexOf(ev) }))){
+    const inputs = CUSTOM_FIELDS.map(k =>
+      `<td><input class="cell-in" type="text" data-i="${origIdx}" data-f="${k}" value="${esc(ev[k]||'')}" placeholder="—" /></td>`
+    ).join('');
+    rows += `<tr>
+      <td class="idx">${origIdx+1}</td>
+      <td class="ro" title="${esc(ev.title)}">${esc(ev.title)||'<span style="color:var(--muted)">—</span>'}</td>
+      <td class="ro desc-cell" title="${esc(ev.description)}">${esc(ev.description)||'<span style="color:var(--muted)">—</span>'}</td>
+      <td class="ro" style="white-space:nowrap">${esc(ev.start||'—')}</td>
+      ${inputs}
+    </tr>`;
+  }
+
+  host.innerHTML = `<div class="editor-wrap"><table class="editor-table">
+    <thead><tr>
+      <th class="idx">#</th><th>Título</th><th>Descripción</th><th>Inicio</th>${customHds}
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>
+  <p class="previewnote" style="margin-top:8px">${active.length} eventos · editá cualquier celda para sobreescribir el valor auto-completado. Los campos en rojo se rellenan automáticamente desde el calendario.</p>`;
+
+  host.querySelectorAll('.cell-in').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const i = +inp.dataset.i;
+      const f = inp.dataset.f;
+      events[i][f] = inp.value;
+      if (f === 'monto_total' || f === 'adelanto') {
+        calcSaldo(events[i]);
+        const saldoInput = host.querySelector(`.cell-in[data-i="${i}"][data-f="saldo"]`);
+        if (saldoInput) saldoInput.value = events[i].saldo;
+      }
+      renderPreview();
+    });
+  });
+}
+
 function renderFields(){
   const host = document.getElementById('fields');
   host.innerHTML = '';
@@ -662,19 +937,22 @@ function renderFields(){
 }
 function exportFields(){ return presentFields.filter(k => selected.has(k)); }
 function updateCounts(){
+  const active = getActiveEvents();
+  const yearLabel = activeYear === 'all' ? 'todos los años' : activeYear;
   document.getElementById('selCount').textContent = `${selected.size} / ${presentFields.length} columnas`;
   document.getElementById('exportMeta').innerHTML =
-    `<b>${events.length.toLocaleString('es')}</b> filas × <b>${selected.size}</b> columnas`;
+    `<b>${active.length.toLocaleString('es')}</b> filas (${yearLabel}) × <b>${selected.size}</b> columnas`;
 }
 function renderPreview(){
   const cols = exportFields();
   const tbl = document.getElementById('preview');
   if(!cols.length){ tbl.innerHTML = '<thead><tr><th>Seleccioná al menos una columna</th></tr></thead>'; document.getElementById('previewNote').textContent=''; return; }
-  const N = Math.min(50, events.length);
+  const active = getActiveEvents();
+  const N = active.length;
   let head = '<thead><tr><th class="idx">#</th>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr></thead>';
   let body = '<tbody>';
   for(let i=0;i<N;i++){
-    const ev = events[i];
+    const ev = active[i];
     body += '<tr><td class="idx">'+(i+1)+'</td>' + cols.map(c => {
       let v = ev[c];
       if(typeof v === 'boolean') v = v?'true':'false';
@@ -684,7 +962,7 @@ function renderPreview(){
   }
   body += '</tbody>';
   tbl.innerHTML = head + body;
-  document.getElementById('previewNote').textContent = `mostrando ${N} de ${events.length} filas`;
+  document.getElementById('previewNote').textContent = `${N} filas`;
 }
 function refresh(){ renderFields(); renderPreview(); }
 
@@ -698,13 +976,13 @@ function csvEscape(val, delim){
   }
   return s;
 }
-function buildCSV(){
+function buildCSV(evSubset){
   const cols = exportFields();
   let delim = document.getElementById('delim').value;
   if(delim === '\\t') delim = '\t';
   const bom = document.getElementById('bom').checked;
   const rows = [ cols.map(c => csvEscape(c, delim)).join(delim) ];
-  for(const ev of events){
+  for(const ev of evSubset){
     rows.push(cols.map(c => {
       let v = ev[c];
       if(typeof v === 'boolean') v = v ? 'true' : 'false';
@@ -713,16 +991,26 @@ function buildCSV(){
   }
   return (bom ? '﻿' : '') + rows.join('\r\n');
 }
-function downloadCSV(){
-  if(!exportFields().length){ toast('Seleccioná al menos una columna.', true); return; }
-  const csv = buildCSV();
+function triggerDownload(csv, filename){
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'google-calendar-export.csv';
+  a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1500);
-  toast('CSV descargado · '+events.length+' filas');
+}
+function downloadCSV(){
+  if(!exportFields().length){ toast('Seleccioná al menos una columna.', true); return; }
+  const active = getActiveEvents();
+  const label = activeYear === 'all' ? 'todos' : activeYear;
+  triggerDownload(buildCSV(active), `eventos-${label}.csv`);
+  toast(`CSV descargado · ${active.length} filas`);
+}
+function downloadCSVForYear(year){
+  if(!exportFields().length){ toast('Seleccioná al menos una columna.', true); return; }
+  const subset = events.filter(ev => (ev.start||'').slice(0,4) === year);
+  triggerDownload(buildCSV(subset), `eventos-${year}.csv`);
+  toast(`CSV ${year} descargado · ${subset.length} filas`);
 }
 
 /* ============================================================
@@ -765,11 +1053,13 @@ document.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => {
   else if(m === 'core') selected = new Set(CORE.filter(k => presentFields.includes(k)));
   refresh();
 });
-document.getElementById('delim').onchange = () => {};
 document.getElementById('exportBtn').onclick = downloadCSV;
 document.getElementById('resetBtn').onclick = () => {
-  events = []; selected = new Set(); presentFields = [];
+  events = []; selected = new Set(); presentFields = []; activeYear = 'all';
   document.getElementById('results').style.display = 'none';
+  document.getElementById('editor-table-host').innerHTML = '';
+  document.getElementById('year-tabs-host').innerHTML = '';
+  document.getElementById('year-export-host').innerHTML = '';
   document.getElementById('fileList').innerHTML = '';
   fileInput.value = '';
   window.scrollTo({top:0, behavior:'smooth'});
